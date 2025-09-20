@@ -8,7 +8,7 @@ ApplicationWindow {
     visible: true
     title: "LogViewer"
 
-    property string startPage: "pages/Start.qml"
+    property string startPage: "pages/test.qml"
     property string appPage: "pages/App.qml"
 
     StackView {

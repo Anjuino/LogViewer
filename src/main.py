@@ -5,26 +5,22 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QUrl
 
 from core.backend import Backend
-import serial.tools.list_ports
 
 def main():
     app = QApplication(sys.argv)
     engine = QQmlApplicationEngine()
-
-    backend = Backend()
+    backend = Backend(engine)
     engine.rootContext().setContextProperty("Backend", backend)
 
-    #qml_path = Path(__file__).parent / "ui" / "main.qml"
-    qml_path = Path(__file__).parent / "ui" / "test.qml"
+    qml_path = Path(__file__).parent / "ui" / "App.qml"
     engine.load(QUrl.fromLocalFile(str(qml_path)))
 
-    '''
-    if not engine.rootObjects():
-        print("❌ Ошибка загрузки QML!")
-        sys.exit(-1)
+    def cleanup():
+        backend.stop_all_threads()  # Останавливаем все потоки
+        print("Закрытие приложения")
 
-    print("✅ Приложение запущено!")
-    '''
+
+    app.aboutToQuit.connect(cleanup)  # Подключаем очистку к сигналу завершения
     sys.exit(app.exec())
 
 

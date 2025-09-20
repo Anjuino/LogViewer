@@ -1,66 +1,74 @@
 from PySide6.QtCore import QObject, Slot, Signal
 import serial.tools.list_ports
-import random
+from core.SerialComPort import Serial, ParseData
 
 
+#Поток интерфейса
 class Backend(QObject):
-    def __init__(self):
-        super().__init__()
-        self._combo_data = ["Python", "QML", "PySide6", "JavaScript", "C++"]
 
+    def __init__(self, qml_engine):
+        super().__init__()
+        self.qml_engine = qml_engine  # Ссылка на QML engine
+
+        self.parser = ParseData()     # Объект обработчика данных
+        self.serial_com = Serial()    # Объект com порта
+
+        self.parser.data_ready.connect(self.data_completed)     # Связываю обработчик данных в парсере с интерфейсом
+
+    # Вызов функции из qml
+    def call_qml_function(self, function_name, *args):
+        root_object = self.qml_engine.rootObjects()[0]
+        if hasattr(root_object, function_name):
+            getattr(root_object, function_name)(*args)
+
+    # Остановить все потоки
+    def stop_all_threads(self):
+        if hasattr(self.parser, 'running'):
+            self.parser.running = False
+            self.parser.wait()
+
+        if hasattr(self.serial_com, 'running'):
+            self.serial_com.running = False
+
+        print("Все потоки остановлены")
+
+    def status(self, data):
+        #print(data)
+        self.call_qml_function("set_status_com_port", data)
+
+    def data_completed(self, data):
+        #print(data)
+        self.call_qml_function("print_data_from_com_port", f"{data}")
+
+
+    # Получить список COM портов
     @Slot(result=list)
     def get_com_ports(self):
-        """Получить список доступных COM-портов"""
         ports = serial.tools.list_ports.comports()
+        return [port.device for port in ports]
 
-        print("Доступные COM-порты:")
-        for port in ports:
-            print(f"Порт: {port.device}")
-            print(f"Описание: {port.description}")
-            print(f"Производитель: {port.manufacturer}")
+    @Slot(str, str)
+    def connect_com_port(self, port, speed):
 
-        return ports
+        self.parser.start()            # Запуск обработки данных
 
+        thread = Serial(port, speed)   # Поток для получения данных с COM порта
 
-    # Сигнал для обновления UI
-    dataUpdated = Signal()
+        # Подключаю сигналы:
+        thread.raw_data_ready.connect(self.parser.add_raw_data)   # Сырые данные в обработчик
 
+        thread.status.connect(self.status)                        # Статус потока
+
+        thread.start()            # Запуск потока COM порта
+
+        self.serial_com = thread  # Сохраняю указатель на поток, чтобы не было удаления сборкой мусора
+
+    @Slot()
+    def disconnect_com_port(self):
+        self.stop_all_threads()
+
+    # Логирование с qml
     @Slot(str)
     def log(self, message):
-        print(f"LOG: {message}")
+        print(f"Front: {message}")
 
-    # Метод для получения данных комбо-бокса
-    @Slot(result=list)
-    def get_combo_data(self):
-        return self._combo_data
-
-    # Добавление нового элемента
-    @Slot(str)
-    def add_item(self, new_item):
-        if new_item and new_item not in self._combo_data:
-            self._combo_data.append(new_item)
-            self.dataUpdated.emit()
-            self.log(f"Добавлен элемент: {new_item}")
-
-    # Удаление элемента по индексу
-    @Slot(int)
-    def remove_item(self, index):
-        if 0 <= index < len(self._combo_data):
-            removed_item = self._combo_data.pop(index)
-            self.dataUpdated.emit()
-            self.log(f"Удален элемент: {removed_item}")
-
-    # Генерация случайных данных
-    @Slot()
-    def generate_random_data(self):
-        random_items = ["Item_" + str(random.randint(1, 100)) for _ in range(5)]
-        self._combo_data.extend(random_items)
-        self.dataUpdated.emit()
-        self.log("Сгенерированы случайные данные")
-
-    # Очистка всех данных
-    @Slot()
-    def clear_data(self):
-        self._combo_data.clear()
-        self.dataUpdated.emit()
-        self.log("Данные очищены")
