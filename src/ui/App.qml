@@ -3,30 +3,60 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
+
 Window {
     id: root
     visible: true
-    width: 800
-    height: 600
+    width: 1024
+    height: 768
+    maximumWidth: 1024
+    maximumHeight: 768
     title: "LogViewer"
     color: "#f0f0f0"
 
-    function print_data_from_com_port(message) {
-        var timestamp = new Date().toLocaleTimeString()
-        logArea.append(message + "\n")
+    function update_tag_list(newTag) {
+        // Проверяем есть ли уже такой тег
+        for (var i = 0; i < tagListModel.count; i++) {
+            if (tagListModel.get(i).text === newTag) {
+                return // Уже есть, выходим
+            }
+        }
 
-        logArea.cursorPosition = logArea.length    // Автопрокрутка вниз
+        // Добавляем новый тег
+        statusArea.append("Появился новый тег: " + newTag + "\n")
+        tagLabel.text = "Теги: (" + tagListModel.count + ")"
+        tagListModel.append({text: newTag})
+    }
+
+    function print_data_from_com_port(message) {
+        if (message) {
+            var timestamp = new Date().toLocaleTimeString()
+            logArea.append(message + "\n")
+            logArea.cursorPosition = logArea.length    // Автопрокрутка вниз
+        }
     }
 
     property alias connectButton: buttonConnection
     function set_status_com_port(message) {
+        var timestamp = new Date().toLocaleTimeString()
+
         if (message == "True") {
             connectButton.text = "Отключиться"
-            logArea.append("Подключился" + "\n")
+            connectButton.background.color = "#ee0404"
+            statusArea.append(timestamp + " Подключился" + "\n")
         }
-        else {
+
+        else if (message == "False") {
             connectButton.text = "Подключиться"
-            logArea.append("Отключился" + "\n")
+            connectButton.background.color = "#1db91b"
+            statusArea.append(timestamp + " Отключился" + "\n")
+        }
+
+    }
+    function log_app(message) {
+        var timestamp = new Date().toLocaleTimeString()
+        if (message) {
+            statusArea.append(timestamp + " " + message + "\n")
         }
     }
 
@@ -61,6 +91,7 @@ Window {
 
                 ColumnLayout {
                     width: parent.width
+                    spacing: 10
 
                     // Заголовок для ComboBox
                     Label {
@@ -113,18 +144,28 @@ Window {
                         }
                     }
 
-                    ColumnLayout {
+                    RowLayout {
                         id: connection
                         visible: false // Скрыто при старте
-                        width: parent.width
 
                         Button {
                             id: buttonConnection
-
                             property bool connected_to_com_port: false
 
                             text: "Подключиться"
-                            Layout.fillWidth: true
+                            width: 150 // Фиксированная ширина
+                            height: 40 // Фиксированная высота
+
+                            Layout.alignment: Qt.AlignTop
+
+                            background: Rectangle {
+                                id: bgRect
+                                color: "#1db91b"
+                                radius: 2
+                                border.width: 2
+                                border.color: "black"
+                            }
+
                             onClicked: {
                                 if (connected_to_com_port) {
                                     // Отключаемся
@@ -132,6 +173,8 @@ Window {
                                     connected_to_com_port = false
                                     comboBox.enabled = true
                                     speedComboBox.enabled = true
+                                    levelSettings.visible = false
+                                    button_clear.visible = false
                                 } else {
                                     // Подключаемся
                                     var Port = comboBox.currentText
@@ -140,28 +183,147 @@ Window {
                                     connected_to_com_port = true
                                     comboBox.enabled = false
                                     speedComboBox.enabled = false
+                                    levelSettings.visible = true
+                                    button_clear.visible = true
                                 }
                             }
+                        }
+
+                        ColumnLayout {
+                            id: levelSettings
+                            visible: false
+
+                            RowLayout {
+                                Label {
+                                    text: "Отображаемый уровень логирования: "
+                                    Layout.preferredWidth: 210
+                                }
+
+                                ComboBox {
+                                    id: levelComboBox
+                                    Layout.preferredWidth: 150
+                                    model: ["Все","Warning", "Error", "Info", "Debug", "Verbose"]
+                                    currentIndex: 0
+
+                                    onCurrentTextChanged: {
+                                        if (currentText) {
+                                            Backend.set_log_level(currentText)
+                                        }
+                                    }
+                                }
+                            }
+
+                            RowLayout {
+                                Label {
+                                    id: tagLabel
+                                    Layout.preferredWidth: 210
+                                }
+
+                                ComboBox {
+                                    id: tagComboBox
+                                    property bool block: false
+                                    Layout.preferredWidth: 150
+                                    model: ListModel {
+                                        id: tagListModel
+                                        ListElement { text: "Все" }
+                                    }
+
+                                    onCurrentTextChanged: {
+                                        if (currentText&& !block) {
+                                            Backend.set_current_tag(currentText)
+                                        }
+                                    }
+
+                                    Component.onCompleted: {
+                                        tagLabel.text = "Теги:"
+                                    }
+                                }
+                            }
+
+                            RowLayout {
+                                visible: true
+                                Layout.alignment: Qt.AlignTop
+                                Button {
+                                    id: button_clear
+
+                                    text: "Очистить лог"
+                                    width: 150 // Фиксированная ширина
+                                    height: 40 // Фиксированная высота
+
+                                    Layout.alignment: Qt.AlignTop
+
+                                    onClicked: {
+                                        log_app("Очистка логов")
+                                        logArea.text = ""
+                                        Backend.clear_log()
+                                    }
+                                }
+                            }
+
                         }
                     }
                 }
             }
 
-            GroupBox {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ScrollView {
+                RowLayout {
                     anchors.fill: parent
-                    TextArea {
-                        id: logArea
-                        readOnly: true
-                        placeholderText: "Здесь будут отображаться логи после подключения"
-                        textFormat: TextEdit.PlainText
+                    spacing: 5
+
+                    // Первое поле с рамкой
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: parent.width * 0.7
+                        border.color: "#ccc"
+                        border.width: 1
+                        color: "transparent"
+
+                        ScrollView {
+                            anchors.fill: parent
+                            anchors.margins: 2
+
+                            TextArea {
+                                id: logArea
+                                readOnly: true
+                                textFormat: TextEdit.PlainText
+                                font.pointSize: 9
+                                font.family: "Consolas, Monaco, Courier New, monospace"
+                                topPadding: 1
+                                bottomPadding: 1
+                            }
+                        }
+                    }
+
+                    // Второе поле с рамкой - ТАК ЖЕ ОБЕРНУТЬ В Rectangle
+                    Rectangle {
+                        Layout.preferredWidth: parent.width * 0.3
+                        Layout.preferredHeight: 150
+                        Layout.alignment: Qt.AlignTop
+                        border.color: "#ccc"  // РАМКА
+                        border.width: 1       // ТОЛЩИНА
+                        color: "transparent"  // ПРОЗРАЧНЫЙ ФОН
+
+                        ScrollView {
+                            anchors.fill: parent
+                            anchors.margins: 2  // ОТСТУП ОТ РАМКИ
+
+                            TextArea {
+                                id: statusArea
+                                readOnly: true
+                                textFormat: TextEdit.PlainText
+                                font.pointSize: 9
+                                font.family: "Consolas, Monaco, Courier New, monospace"
+                                topPadding: 1
+                                bottomPadding: 1
+                            }
+                        }
                     }
                 }
             }
         }
     }
-
 }

@@ -14,9 +14,13 @@ class Backend(QObject):
         self.serial_com = Serial()    # Объект com порта
 
         self.parser.data_ready.connect(self.data_completed)     # Связываю обработчик данных в парсере с интерфейсом
+        self.parser.new_tag.connect(self.update_tag)            # Связываю обработчик данных в парсере с интерфейсом
 
     # Вызов функции из qml
     def call_qml_function(self, function_name, *args):
+        if not self.qml_engine.rootObjects():
+            return
+
         root_object = self.qml_engine.rootObjects()[0]
         if hasattr(root_object, function_name):
             getattr(root_object, function_name)(*args)
@@ -36,9 +40,40 @@ class Backend(QObject):
         #print(data)
         self.call_qml_function("set_status_com_port", data)
 
+    def log_app(self, data):
+        #print(data)
+        self.call_qml_function("log_app", data)
+
+    def update_tag(self, data):
+        #print(tag)
+        self.call_qml_function("update_tag_list", data)
+
     def data_completed(self, data):
         #print(data)
         self.call_qml_function("print_data_from_com_port", f"{data}")
+
+
+    # Установить тег по которым нужно выводить данные
+    @Slot(str)
+    def set_current_tag(self, message):
+        self.log_app(f"Выбран тег: {message}")
+        self.parser.set_tag(message)
+
+    # Установить уровень логгирования для вывода на фронт
+    @Slot(str)
+    def set_log_level(self, message):
+        log_level = -1
+
+        if message == "Все":     log_level = 'A'
+        if message == "Warning": log_level = 'W'
+        if message == "Error":   log_level = 'E'
+        if message == "Info":    log_level = "I"
+        if message == "Debug":   log_level = "D"
+        if message == "Verbose": log_level = 'V'
+
+        #print(f"Front: {message}, log_level: {log_level}")
+        self.log_app(f"Выбран уровень логгирования: {message}")
+        self.parser.set_log_level(log_level)
 
 
     # Получить список COM портов
@@ -66,6 +101,10 @@ class Backend(QObject):
     @Slot()
     def disconnect_com_port(self):
         self.stop_all_threads()
+
+    @Slot()
+    def clear_log(self):
+        print("Очистка логов")
 
     # Логирование с qml
     @Slot(str)
