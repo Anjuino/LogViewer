@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 import queue
 import re
+from pathlib import Path
 
 level_map = {
     'W': 'WARNING',
@@ -26,6 +27,10 @@ class ParseData(QThread):
 
         self.tags_list = []
         self.current_tag = 'Все'
+
+        self.is_need_save_log_to_file = False
+
+        self.time_to_connect = 0
 
     def set_tag(self, tag):
         self.current_tag = tag
@@ -91,6 +96,22 @@ class ParseData(QThread):
                 return None
 
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.is_need_save_log_to_file:
+            log_dir = Path("log")
+            log_dir.mkdir(exist_ok=True)
+
+            # Создаем безопасное имя файла
+            safe_filename = f"{self.time_to_connect}".replace(":", "-").replace(" ", "_").replace("/", "-").replace(
+                "\\", "-")
+
+            safe_filename += ".txt"
+            log_file_path = log_dir / safe_filename
+
+            with open(log_file_path, "a", encoding="utf-8") as file:
+                file.write(f"{current_time} {filtered_data}\n")
+
+
         return f"{current_time} {filtered_data}"
 
 # Поток получения даннх с com порта

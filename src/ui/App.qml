@@ -148,45 +148,68 @@ Window {
                         id: connection
                         visible: false // Скрыто при старте
 
-                        Button {
-                            id: buttonConnection
-                            property bool connected_to_com_port: false
-
-                            text: "Подключиться"
-                            width: 150 // Фиксированная ширина
-                            height: 40 // Фиксированная высота
+                        ColumnLayout {
 
                             Layout.alignment: Qt.AlignTop
 
-                            background: Rectangle {
-                                id: bgRect
-                                color: "#1db91b"
-                                radius: 2
-                                border.width: 2
-                                border.color: "black"
-                            }
+                            CheckBox {
+                                id: checkbox_file
+                                enabled: true
 
-                            onClicked: {
-                                if (connected_to_com_port) {
-                                    // Отключаемся
-                                    Backend.disconnect_com_port()
-                                    connected_to_com_port = false
-                                    comboBox.enabled = true
-                                    speedComboBox.enabled = true
-                                    levelSettings.visible = false
-                                    button_clear.visible = false
-                                } else {
-                                    // Подключаемся
-                                    var Port = comboBox.currentText
-                                    var Speed = speedComboBox.currentText
-                                    Backend.connect_com_port(Port, Speed)
-                                    connected_to_com_port = true
-                                    comboBox.enabled = false
-                                    speedComboBox.enabled = false
-                                    levelSettings.visible = true
-                                    button_clear.visible = true
+                                text: "Сохранять логи в файл"
+                                onCheckedChanged: {
+                                    Backend.save_log_to_file(checked)
                                 }
                             }
+
+                            Button {
+                                id: buttonConnection
+                                property bool connected_to_com_port: false
+
+                                text: "Подключиться"
+                                width: 150 // Фиксированная ширина
+                                height: 40 // Фиксированная высота
+
+                                Layout.alignment: Qt.AlignTop
+
+                                background: Rectangle {
+                                    id: bgRect
+                                    color: "#1db91b"
+                                    radius: 2
+                                    border.width: 2
+                                    border.color: "black"
+                                }
+
+                                onClicked: {
+                                    if (connected_to_com_port) {
+                                        // Отключаемся
+                                        Backend.disconnect_com_port()
+                                        connected_to_com_port = false
+                                        comboBox.enabled = true
+                                        speedComboBox.enabled = true
+                                        checkbox_file.enabled = true
+                                        levelSettings.visible = false
+                                        button_clear.visible = false
+                                    } else {
+                                        // Подключаемся
+                                        var Port = comboBox.currentText
+                                        var Speed = speedComboBox.currentText
+                                        Backend.connect_com_port(Port, Speed)
+                                        connected_to_com_port = true
+                                        comboBox.enabled = false
+                                        speedComboBox.enabled = false
+                                        checkbox_file.enabled = false
+                                        levelSettings.visible = true
+                                        button_clear.visible = true
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.fillHeight: true
+                            color: "lightgray"
                         }
 
                         ColumnLayout {

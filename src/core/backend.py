@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Slot, Signal
 import serial.tools.list_ports
 from core.SerialComPort import Serial, ParseData
-
+from datetime import datetime
 
 #Поток интерфейса
 class Backend(QObject):
@@ -38,6 +38,8 @@ class Backend(QObject):
 
     def status(self, data):
         #print(data)
+        if data: self.parser.time_to_connect = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         self.call_qml_function("set_status_com_port", data)
 
     def log_app(self, data):
@@ -52,6 +54,10 @@ class Backend(QObject):
         #print(data)
         self.call_qml_function("print_data_from_com_port", f"{data}")
 
+
+    @Slot(str)
+    def save_log_to_file(self, message):
+        self.parser.is_need_save_log_to_file = message
 
     # Установить тег по которым нужно выводить данные
     @Slot(str)
