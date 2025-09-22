@@ -59,7 +59,7 @@ class ParseData(QThread):
 
     def handler_data(self, raw_data):
         # Обрабатываем данные
-        filtered_data = re.sub(r'\(\d+\)', '', raw_data, count=1)
+        filtered_data = re.sub(r'\(\d+\)', '', raw_data, count=1)   # Удаляю первые скобки в сообщении
         filtered_data = re.sub(r'\s+', ' ', filtered_data).strip()
 
         # Ищем тег - код уровня всегда есть, берем слово после него
@@ -74,15 +74,14 @@ class ParseData(QThread):
         tag = without_code.split(' ', 1)[0]
 
         # Убираем двоеточие если есть
-        if tag.endswith(':'):
-            tag = tag[:-1]
+        if tag.endswith(':'): tag = tag[:-1]
 
         # Добавляем тег в список если его нет
         if tag not in self.tags_list:
             self.tags_list.append(tag)
             self.new_tag.emit(tag)
 
-        # ПРОВЕРЯЕМ ТЕГ ФИЛЬТРА
+        # Тег через фильтр
         if self.current_tag != 'Все' and self.current_tag != tag:
             return None  # Пропускаем если тег не совпадает
 

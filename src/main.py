@@ -19,7 +19,6 @@ def main():
         backend.stop_all_threads()  # Останавливаем все потоки
         print("Закрытие приложения")
 
-
     app.aboutToQuit.connect(cleanup)  # Подключаем очистку к сигналу завершения
     sys.exit(app.exec())
 

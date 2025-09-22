@@ -14,7 +14,7 @@ class Backend(QObject):
         self.serial_com = Serial()    # Объект com порта
 
         self.parser.data_ready.connect(self.data_completed)     # Связываю обработчик данных в парсере с интерфейсом
-        self.parser.new_tag.connect(self.update_tag)            # Связываю обработчик данных в парсере с интерфейсом
+        self.parser.new_tag.connect(self.update_tag)            # Связываю появление новых тегов в парсере с интерфейсом
 
     # Вызов функции из qml
     def call_qml_function(self, function_name, *args):
@@ -54,7 +54,6 @@ class Backend(QObject):
         #print(data)
         self.call_qml_function("print_data_from_com_port", f"{data}")
 
-
     @Slot(str)
     def save_log_to_file(self, message):
         self.parser.is_need_save_log_to_file = message
@@ -91,14 +90,14 @@ class Backend(QObject):
     @Slot(str, str)
     def connect_com_port(self, port, speed):
 
-        self.parser.start()            # Запуск обработки данных
+        self.parser.start()            # Запуск потока обработки данных
 
         thread = Serial(port, speed)   # Поток для получения данных с COM порта
 
         # Подключаю сигналы:
-        thread.raw_data_ready.connect(self.parser.add_raw_data)   # Сырые данные в обработчик
+        thread.raw_data_ready.connect(self.parser.add_raw_data)   # Сырые данные в парсер
 
-        thread.status.connect(self.status)                        # Статус потока
+        thread.status.connect(self.status)                        # Статус com порта
 
         thread.start()            # Запуск потока COM порта
 
@@ -107,10 +106,6 @@ class Backend(QObject):
     @Slot()
     def disconnect_com_port(self):
         self.stop_all_threads()
-
-    @Slot()
-    def clear_log(self):
-        print("Очистка логов")
 
     # Логирование с qml
     @Slot(str)
